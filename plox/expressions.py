@@ -47,3 +47,10 @@ class Logical(Expr):
     left: Expr
     operator: Token
     right: Expr
+
+
+@dataclass
+class Call(Expr):
+    callee: Expr
+    paren: Token
+    arguments: list[Expr]

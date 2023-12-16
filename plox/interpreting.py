@@ -1,12 +1,61 @@
 # pylint: disable=function-redefined
 # mypy: disable-error-code="no-redef"
 
+from abc import ABC, abstractmethod
+import time
 from typing import Callable
 
 from plox import expressions as expr, statements as stmt
 from plox.tokens import Token, TokenType
 from plox.visitor import visitor
+
 from plox.environments import Environment
+
+
+class LoxCallable(ABC):
+    @abstractmethod
+    def call(self, interpreter: "Interpreter", arguments: list[object]) -> object:
+        pass
+
+    @abstractmethod
+    def arity(self) -> int:
+        pass
+
+
+class AnonymousCallable(LoxCallable):
+    def __init__(
+        self, callable_: Callable[["Interpreter", list[object]], object], arity: int
+    ):
+        self._callable = callable_
+        self._arity = arity
+
+    def arity(self) -> int:
+        return self._arity
+
+    def call(self, interpreter: "Interpreter", arguments: list[object]) -> object:
+        return self._callable(interpreter, arguments)
+
+
+class LoxFunction(LoxCallable):
+    def __init__(self, declaration: stmt.Function):
+        self._declaration = declaration
+
+    def arity(self) -> int:
+        return len(self._declaration.params)
+
+    def call(self, interpreter: "Interpreter", arguments: list[object]) -> object:
+        environment = Environment(interpreter.globals)
+        for parameter, argument in zip(self._declaration.params, arguments):
+            environment.define(parameter.lexeme, argument)
+
+        try:
+            interpreter.execute_block(self._declaration.body, environment)
+        except Return as return_value:
+            return return_value.value
+        return None
+
+    def __str__(self) -> str:
+        return f"<fn {self._declaration.name.lexeme}>"
 
 
 class InterpreterError(RuntimeError):
@@ -16,10 +65,25 @@ class InterpreterError(RuntimeError):
         self.message = message
 
 
+class Return(RuntimeError):
+    def __init__(self, value: object):
+        self.value = value
+
+
 class Interpreter:
     def __init__(self, error_callback: Callable[[InterpreterError], None]):
         self._error_callback = error_callback
-        self._environment = Environment()
+
+        self.globals = Environment()
+        self.globals.define(
+            "clock",
+            AnonymousCallable(
+                callable_=lambda interpreter, arguments: (time.time() / 1000.0),
+                arity=0,
+            ),
+        )
+
+        self._environment = self.globals
 
     def interpret(self, statements: list[stmt.Stmt]) -> None:
         try:
@@ -46,9 +110,27 @@ class Interpreter:
 
     @visitor(stmt.Block)
     def execute(self, statement: stmt.Block) -> None:
-        self._execute_block(statement.statements, Environment(self._environment))
+        self.execute_block(statement.statements, Environment(self._environment))
 
-    def _execute_block(
+    @visitor(stmt.While)
+    def execute(self, statement: stmt.While) -> None:
+        while self._is_truthy(self.evaluate(statement.condition)):
+            self.execute(statement.body)
+
+    @visitor(stmt.Function)
+    def execute(self, statement: stmt.Function) -> None:
+        function = LoxFunction(statement)
+        self._environment.define(statement.name.lexeme, function)
+
+    @visitor(stmt.Return)
+    def execute(self, statement: stmt.Return) -> None:
+        value = None
+        if statement.value is not None:
+            value = self.evaluate(statement.value)
+
+        raise Return(value)
+
+    def execute_block(
         self, statements: list[stmt.Stmt], environment: Environment
     ) -> None:
         previous = self._environment
@@ -161,6 +243,26 @@ class Interpreter:
                 return left
 
         return self.evaluate(logical.right)
+
+    @visitor(expr.Call)
+    def evaluate(self, call: expr.Call) -> object:
+        callee = self.evaluate(call.callee)
+
+        arguments = []
+        for argument in call.arguments:
+            arguments.append(self.evaluate(argument))
+
+        if not isinstance(callee, LoxCallable):
+            raise InterpreterError(call.paren, "Can only call functions and classes.")
+
+        function: LoxCallable = callee
+
+        if len(arguments) != function.arity():
+            raise InterpreterError(
+                call.paren,
+                "Expected {function.arity()} arguments but got {len(arguments)}.",
+            )
+        return function.call(self, arguments)
 
     def _is_truthy(self, object_: object) -> bool:
         match object_:
