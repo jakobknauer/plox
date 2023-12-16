@@ -54,3 +54,21 @@ class Call(Expr):
     callee: Expr
     paren: Token
     arguments: list[Expr]
+
+
+@dataclass(eq=False)
+class Get(Expr):
+    object_: Expr
+    name: Token
+
+
+@dataclass(eq=False)
+class Set(Expr):
+    object_: Expr
+    name: Token
+    value: Expr
+
+
+@dataclass(eq=False)
+class This(Expr):
+    keyword: Token

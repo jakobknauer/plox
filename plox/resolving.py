@@ -14,16 +14,24 @@ from plox.tokens import Token
 class _FunctionType(Enum):
     NONE = auto()
     FUNCTION = auto()
+    INITIALIZER = auto()
+    METHOD = auto()
+
+
+class _ClassType(Enum):
+    NONE = auto()
+    CLASS = auto()
 
 
 class Resolver:
     def __init__(
-        self, interpreter: Interpreter, error_callack: Callable[[Token, str], None]
+        self, interpreter: Interpreter, error_callback: Callable[[Token, str], None]
     ) -> None:
         self._interpreter = interpreter
         self._scopes: list[dict[str, bool]] = []
-        self._error_callack = error_callack
+        self._error_callback = error_callback
         self._current_function = _FunctionType.NONE
+        self._current_class = _ClassType.NONE
 
     @visitor(list)
     def resolve(self, statements: list[stmt.Stmt]) -> None:
@@ -46,7 +54,7 @@ class Resolver:
     @visitor(expr.Variable)
     def resolve(self, expression: expr.Variable) -> None:
         if self._scopes and self._scopes[-1].get(expression.name.lexeme) is False:
-            self._error_callack(
+            self._error_callback(
                 expression.name, "Can't read local variable in its own initializer."
             )
 
@@ -82,15 +90,41 @@ class Resolver:
     @visitor(stmt.Return)
     def resolve(self, statement: stmt.Return) -> None:
         if self._current_function == _FunctionType.NONE:
-            self._error_callack(statement.keyword, "Can't return from top-level code.")
+            self._error_callback(statement.keyword, "Can't return from top-level code.")
 
         if statement.value:
+            if self._current_function == _FunctionType.INITIALIZER:
+                self._error_callback(
+                    statement.keyword, "Can't return a value from an initializer."
+                )
             self.resolve(statement.value)
 
     @visitor(stmt.While)
     def resolve(self, statement: stmt.While) -> None:
         self.resolve(statement.condition)
         self.resolve(statement.body)
+
+    @visitor(stmt.Class)
+    def resolve(self, statement: stmt.Class) -> None:
+        enclosing_class, self._current_class = self._current_class, _ClassType.CLASS
+
+        self._declare(statement.name)
+        self._define(statement.name)
+
+        self._begin_scope()
+        self._scopes[-1]["this"] = True
+
+        for method in statement.methods:
+            declaration = (
+                _FunctionType.INITIALIZER
+                if method.name.lexeme == "init"
+                else _FunctionType.METHOD
+            )
+            self._resolve_function(method, declaration)
+
+        self._end_scope()
+
+        self._current_class = enclosing_class
 
     @visitor(expr.Binary)
     def resolve(self, expression: expr.Binary) -> None:
@@ -121,6 +155,25 @@ class Resolver:
     def resolve(self, expression: expr.Unary) -> None:
         self.resolve(expression.right)
 
+    @visitor(expr.Get)
+    def resolve(self, expression: expr.Get) -> None:
+        self.resolve(expression.object_)
+
+    @visitor(expr.Set)
+    def resolve(self, expression: expr.Set) -> None:
+        self.resolve(expression.value)
+        self.resolve(expression.object_)
+
+    @visitor(expr.This)
+    def resolve(self, expression: expr.This) -> None:
+        if self._current_class == _ClassType.NONE:
+            self._error_callback(
+                expression.keyword, "Can't use 'this' outside of a class."
+            )
+            return
+
+        self._resolve_local(expression, expression.keyword)
+
     def _begin_scope(self) -> None:
         self._scopes.append({})
 
@@ -133,7 +186,7 @@ class Resolver:
 
         scope = self._scopes[-1]
         if name.lexeme in scope:
-            self._error_callack(
+            self._error_callback(
                 name, "Already a variable with this name in this scope."
             )
         scope[name.lexeme] = False

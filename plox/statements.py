@@ -54,3 +54,9 @@ class Function(Stmt):
 class Return(Stmt):
     keyword: Token
     value: Expr | None
+
+
+@dataclass
+class Class(Stmt):
+    name: Token
+    methods: list[Function]

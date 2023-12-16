@@ -3,7 +3,7 @@
 
 from abc import ABC, abstractmethod
 import time
-from typing import Callable
+from typing import Callable, Self
 
 from plox import expressions as expr, statements as stmt
 from plox.tokens import Token, TokenType
@@ -37,9 +37,12 @@ class AnonymousCallable(LoxCallable):
 
 
 class LoxFunction(LoxCallable):
-    def __init__(self, declaration: stmt.Function, closure: Environment):
+    def __init__(
+        self, declaration: stmt.Function, closure: Environment, is_initializer: bool
+    ):
         self._declaration = declaration
         self._closure = closure
+        self._is_initializer = is_initializer
 
     def arity(self) -> int:
         return len(self._declaration.params)
@@ -52,11 +55,69 @@ class LoxFunction(LoxCallable):
         try:
             interpreter.execute_block(self._declaration.body, environment)
         except Return as return_value:
+            if self._is_initializer:
+                return self._closure.get_at(0, "this")
             return return_value.value
+
+        if self._is_initializer:
+            return self._closure.get_at(0, "this")
         return None
 
     def __str__(self) -> str:
         return f"<fn {self._declaration.name.lexeme}>"
+
+    def bind(self, instance: "LoxInstance") -> Self:
+        environment = Environment(self._closure)
+        environment.define("this", instance)
+        return LoxFunction(self._declaration, self._environment, self._is_initializer)
+
+
+class LoxClass(LoxCallable):
+    def __init__(self, name: str, methods: dict[str, LoxFunction]):
+        self._name = name
+        self._methods = methods
+
+    def __str__(self) -> str:
+        return self._name
+
+    def call(self, interpreter: "Interpreter", arguments: list[object]) -> object:
+        instance = LoxInstance(self)
+        initializer = self.find_method("init")
+        if initializer:
+            initializer.bind(instance).call(interpreter, arguments)
+
+        return instance
+
+    def arity(self) -> int:
+        initializer = self.find_method("init")
+        if not initializer:
+            return 0
+        return initializer.arity()
+
+    def find_method(self, name: str) -> LoxFunction | None:
+        return self._methods.get(name)
+
+
+class LoxInstance:
+    def __init__(self, class_: LoxClass):
+        self._class = class_
+        self._fields: dict[str, object] = {}
+
+    def __str__(self) -> str:
+        return f"{self._class._name} instance"
+
+    def get(self, name: Token) -> object:
+        if name.lexeme in self._fields:
+            return self._fields[name.lexeme]
+
+        method = self._class.find_method(name.lexeme)
+        if method:
+            return method.bind(self)
+
+        raise InterpreterError(name, f"Undefined property '{name.lexeme}'.")
+
+    def set(self, name: Token, value: object) -> None:
+        self._fields[name.lexeme] = value
 
 
 class InterpreterError(RuntimeError):
@@ -121,7 +182,7 @@ class Interpreter:
 
     @visitor(stmt.Function)
     def execute(self, statement: stmt.Function) -> None:
-        function = LoxFunction(statement, self._environment)
+        function = LoxFunction(statement, self._environment, False)
         self._environment.define(statement.name.lexeme, function)
 
     @visitor(stmt.Return)
@@ -131,6 +192,27 @@ class Interpreter:
             value = self.evaluate(statement.value)
 
         raise Return(value)
+
+    @visitor(stmt.If)
+    def execute(self, statement: stmt.If) -> None:
+        if self._is_truthy(self.evaluate(statement.condition)):
+            self.execute(statement.then_branch)
+        elif statement.else_branch is not None:
+            self.execute(statement.else_branch)
+
+    @visitor(stmt.Class)
+    def execute(self, statement: stmt.Class) -> None:
+        self._environment.define(statement.name.lexeme, None)
+
+        methods = {}
+        for method in statement.methods:
+            function = LoxFunction(
+                method, self._environment, method.name.lexeme == "this"
+            )
+            methods[method.name.lexeme] = function
+
+        class_ = LoxClass(statement.name.lexeme, methods)
+        self._environment.assign(statement.name, class_)
 
     def execute_block(
         self, statements: list[stmt.Stmt], environment: Environment
@@ -142,13 +224,6 @@ class Interpreter:
                 self.execute(statement)
         finally:
             self._environment = previous
-
-    @visitor(stmt.If)
-    def execute(self, statement: stmt.If) -> None:
-        if self._is_truthy(self.evaluate(statement.condition)):
-            self.execute(statement.then_branch)
-        elif statement.else_branch is not None:
-            self.execute(statement.else_branch)
 
     def resolve(self, expression: expr.Expr, depth: int) -> None:
         self._locals[expression] = depth
@@ -274,6 +349,29 @@ class Interpreter:
                 "Expected {function.arity()} arguments but got {len(arguments)}.",
             )
         return function.call(self, arguments)
+
+    @visitor(expr.Get)
+    def evaluate(self, get: expr.Get) -> object:
+        object_ = self.evaluate(get.object_)
+        if isinstance(object_, LoxInstance):
+            return object_.get(get.name)
+
+        raise InterpreterError(get.name, "Only instances have properties.")
+
+    @visitor(expr.Set)
+    def evaluate(self, set_: expr.Set) -> object:
+        object_ = self.evaluate(set_.object_)
+
+        if not isinstance(object_, LoxInstance):
+            raise InterpreterError(set_.name, "Only instances have fields.")
+
+        value = self.evaluate(set_.value)
+        object_.set(set_.name, value)
+        return value
+
+    @visitor(expr.This)
+    def evaluate(self, this: expr.This) -> object:
+        return self._look_up_variable(this.keyword, this)
 
     def _is_truthy(self, object_: object) -> bool:
         match object_:

@@ -20,6 +20,8 @@ class Parser:
 
     def _declaration(self) -> stmt.Stmt | None:
         try:
+            if self._match(TokenType.CLASS):
+                return self._class_declaration()
             if self._match(TokenType.FUN):
                 return self._function("function")
             if self._match(TokenType.VAR):
@@ -29,7 +31,19 @@ class Parser:
             self._synchronize()
             return None
 
-    def _synchronize(self):
+    def _class_declaration(self) -> stmt.Stmt:
+        name = self._consume(TokenType.IDENTIFIER, "Expect class name.")
+        self._consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
+
+        methods = []
+        while not self._check(TokenType.RIGHT_BRACE) and not self._is_at_end():
+            methods.append(self._function("method"))
+
+        self._consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
+
+        return stmt.Class(name, methods)
+
+    def _synchronize(self) -> None:
         print("SYNC")
 
     def _var_declaration(self) -> stmt.Stmt:
@@ -173,6 +187,9 @@ class Parser:
             if isinstance(expression, expr.Variable):
                 name = expression.name
                 return expr.Assign(name, value)
+            elif isinstance(expression, expr.Get):
+                get = expression
+                return expr.Set(get.object_, get.name, value)
 
             self._error(equals, "Invalid assignment target.")
 
@@ -257,6 +274,11 @@ class Parser:
         while True:
             if self._match(TokenType.LEFT_PAREN):
                 expression = self._finish_call(expression)
+            elif self._match(TokenType.DOT):
+                name = self._consume(
+                    TokenType.IDENTIFIER, "Expect property name after '.'."
+                )
+                expression = expr.Get(expression, name)
             else:
                 break
 
@@ -290,6 +312,9 @@ class Parser:
             expression = self._expression()
             self._consume(TokenType.RIGHT_PAREN, "Expect ')' after expression")
             return expr.Grouping(expression)
+
+        if self._match(TokenType.THIS):
+            return expr.This(self._previous())
 
         if self._match(TokenType.IDENTIFIER):
             return expr.Variable(self._previous())
