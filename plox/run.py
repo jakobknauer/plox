@@ -52,13 +52,12 @@ def run(source: str):
     tokens = scanner.scan_tokens()
 
     parser = Parser(tokens, error2)
-    expression = parser.parse()
+    statements = parser.parse()
 
     if had_error:
         return
 
-    assert expression is not None
-    Interpreter(interpreter_error).interpret(expression)
+    Interpreter(error_callback=interpreter_error).interpret(statements)
 
 
 def error(line: int, message: str):

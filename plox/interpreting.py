@@ -3,7 +3,8 @@
 
 from typing import Callable
 
-from plox import expression
+from plox.expression import Binary, Unary, Grouping, Literal
+from plox import statement as stmt
 from plox.token import Token, TokenType
 from plox.visitor import visitor
 
@@ -19,23 +20,32 @@ class Interpreter:
     def __init__(self, error_callback: Callable[[InterpreterError], None]):
         self._error_callback = error_callback
 
-    def interpret(self, expression: expression.Expr) -> None:
+    def interpret(self, statements: list[stmt.Stmt]) -> None:
         try:
-            value = self.evaluate(expression)
-            print(self._stringify(value))
+            for statement in statements:
+                self.execute(statement)
         except InterpreterError as e:
             self._error_callback(e)
 
-    @visitor(expression.Literal)
-    def evaluate(self, literal: expression.Literal) -> object:
+    @visitor(stmt.Expression)
+    def execute(self, statement: stmt.Expression) -> None:
+        self.evaluate(statement.expression)
+
+    @visitor(stmt.Print)
+    def execute(self, statement: stmt.Print) -> None:
+        value = self.evaluate(statement.expression)
+        print(self._stringify(value))
+
+    @visitor(Literal)
+    def evaluate(self, literal: Literal) -> object:
         return literal.value
 
-    @visitor(expression.Grouping)
-    def evaluate(self, grouping: expression.Grouping) -> object:
+    @visitor(Grouping)
+    def evaluate(self, grouping: Grouping) -> object:
         return self.evaluate(grouping.expression)
 
-    @visitor(expression.Unary)
-    def evaluate(self, unary: expression.Unary) -> object:
+    @visitor(Unary)
+    def evaluate(self, unary: Unary) -> object:
         right = self.evaluate(unary.right)
 
         match unary.operator.type:
@@ -47,8 +57,8 @@ class Interpreter:
             case _:
                 return None
 
-    @visitor(expression.Binary)
-    def evaluate(self, binary: expression.Binary) -> object:
+    @visitor(Binary)
+    def evaluate(self, binary: Binary) -> object:
         left = self.evaluate(binary.left)
         right = self.evaluate(binary.right)
 

@@ -2,19 +2,37 @@ from typing import Callable
 
 from plox.token import Token, TokenType
 from plox.expression import Expr, Binary, Unary, Literal, Grouping
+from plox import statement as stmt
 
 
 class Parser:
-    def __init__(self, tokens: list[Token], error_callback: Callable[[Token, str], None]):
+    def __init__(
+        self, tokens: list[Token], error_callback: Callable[[Token, str], None]
+    ):
         self._tokens = tokens
         self._error_callback = error_callback
         self._current = 0
 
-    def parse(self) -> Expr | None:
-        try:
-            return self._expression()
-        except ParseError:
-            return None
+    def parse(self) -> list[stmt.Stmt]:
+        statements = []
+        while not self._is_at_end():
+            statements.append(self._statement())
+        return statements
+
+    def _statement(self) -> stmt.Stmt:
+        if self._match(TokenType.PRINT):
+            return self._print_statement()
+        return self._expression_statement()
+
+    def _print_statement(self) -> stmt.Stmt:
+        value = self._expression()
+        self._consume(TokenType.SEMICOLON, "Expect ';' after value.")
+        return stmt.Print(value)
+
+    def _expression_statement(self) -> stmt.Stmt:
+        value = self._expression()
+        self._consume(TokenType.SEMICOLON, "Expect ';' after expression.")
+        return stmt.Expression(value)
 
     def _expression(self) -> Expr:
         return self._equality()
