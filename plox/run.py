@@ -27,6 +27,7 @@ class Application:
         self._interpreter = Interpreter(
             globals_=STANDARD_LIBRARY, error_callback=self._interpreter_error
         )
+        self.run_file("plox/standard_library.lox")
 
     def run_file(self, path: str):
         with open(path) as file:

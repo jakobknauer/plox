@@ -1,0 +1,53 @@
+class ListIterator
+{
+    init(list)
+    {
+        this.list = list; 
+        this.index = 0;
+    }
+
+    get()
+    {
+        return this.list.at(this.index);
+    }
+
+    move()
+    {
+        this.index = this.index + 1;
+    }
+
+    hasItems()
+    {
+        return this.index < this.list.size();
+    }
+}
+
+class Range
+{
+    init(start, end, step)
+    {
+        this.current = start;
+        this.end = end;
+        this.step = step;
+    }
+
+    get()
+    {
+        return this.current; 
+    }
+
+    move()
+    {
+        this.current = this.current + this.step; 
+    }
+
+    hasItems()
+    {
+        return this.current < this.end;
+    }
+
+    iterate()
+    {
+        return this; 
+    }
+}

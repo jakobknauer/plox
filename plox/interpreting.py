@@ -457,7 +457,7 @@ class Interpreter:
     @evaluate.register
     def _(self, list_initializer: expr.ListInitializer) -> object:
         items = [self.evaluate(item) for item in list_initializer.items]
-        list_class = self.globals.get_by_name("list")
+        list_class = self.globals.get_by_name("List")
         assert isinstance(list_class, LoxClass)
         instance = LoxInstance(list_class)
         instance.metafields["items"] = items
