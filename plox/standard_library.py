@@ -5,9 +5,10 @@ import inspect
 from plox.environments import Environment
 from plox.interpreting import (
     AnonymousCallable,
-    Interpreter,
-    LoxClass,
     AnonymousLoxFunction,
+    Interpreter,
+    LoxCallable,
+    LoxClass,
     LoxInstance,
 )
 
@@ -86,7 +87,7 @@ for identifier, callable_, arity in _functions:
 
 def lox_function(function) -> AnonymousLoxFunction:
     parameters = inspect.getfullargspec(function).args
-    return AnonymousLoxFunction(function, parameters[2:], Environment())
+    return AnonymousLoxFunction(function, parameters[2:], STANDARD_LIBRARY)
 
 
 @lox_function
@@ -124,6 +125,19 @@ def _lox_list_size(_: Interpreter, environment: Environment):
     return len(items)
 
 
+@lox_function
+def _lox_list_iterate(interpreter: Interpreter, environment: Environment):
+    instance = environment.get_by_name("this")
+    assert isinstance(instance, LoxInstance)
+    iterator_class = environment.get_by_name("listIterator")
+    assert isinstance(iterator_class, LoxClass)
+    iterator = LoxInstance(iterator_class)
+    iterator_initializer = iterator_class.find_method("init")
+    assert isinstance(iterator_initializer, LoxCallable)
+    iterator_initializer.bind(iterator).call(interpreter, [instance])
+    return iterator
+
+
 _lox_list = LoxClass(
     name="list",
     superclass=None,
@@ -132,6 +146,7 @@ _lox_list = LoxClass(
         "append": _lox_list_append,
         "at": _lox_list_at,
         "size": _lox_list_size,
+        "iterate": _lox_list_iterate,
     },
 )
 STANDARD_LIBRARY.define("list", _lox_list)
@@ -181,7 +196,7 @@ def _lox_list_iterator_has_items(_: Interpreter, environment: Environment):
 
 
 _lox_list_iterator = LoxClass(
-    name="iterator",
+    name="listIterator",
     superclass=None,
     methods={
         "init": _lox_list_iterator_init,

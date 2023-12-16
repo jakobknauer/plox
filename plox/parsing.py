@@ -65,6 +65,8 @@ class Parser:
     def _statement(self) -> stmt.Stmt:
         if self._match(TokenType.FOR):
             return self._for_statement()
+        if self._match(TokenType.FOREACH):
+            return self._foreach_statement()
         if self._match(TokenType.IF):
             return self._if_statement()
         if self._match(TokenType.PRINT):
@@ -145,6 +147,66 @@ class Parser:
             body = stmt.Block([initializer, body])
 
         return body
+
+    def _foreach_statement(self) -> stmt.Stmt:
+        self._consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
+
+        self._consume(TokenType.IDENTIFIER, "Expect identifier after 'foreach('.")
+        loop_variable = self._previous()
+
+        self._consume(TokenType.SEMICOLON, "Expect ';' after foreach variable.")
+
+        condition = None
+        iterable = self._expression()
+        self._consume(TokenType.RIGHT_PAREN, "Expect ')' after foreach iterable.")
+
+        body = self._statement()
+
+        iterator_declaration = stmt.Var(
+            Token(TokenType.IDENTIFIER, "it", "it", -1),
+            expr.Call(
+                expr.Get(
+                    iterable,
+                    Token(TokenType.IDENTIFIER, "iterate", "iterate", -1),
+                ),
+                Token(TokenType.LEFT_PAREN, "(", "(", -1),
+                [],
+            ),
+        )
+
+        assignment = stmt.Var(
+            loop_variable,
+            expr.Call(
+                expr.Get(
+                    expr.Variable(Token(TokenType.IDENTIFIER, "it", "it", -1)),
+                    Token(TokenType.IDENTIFIER, "get", "get", -1),
+                ),
+                Token(TokenType.LEFT_PAREN, "(", "(", -1),
+                [],
+            ),
+        )
+
+        condition = expr.Call(
+            expr.Get(
+                expr.Variable(Token(TokenType.IDENTIFIER, "it", "it", -1)),
+                Token(TokenType.IDENTIFIER, "hasItems", "hasItems", -1),
+            ),
+            Token(TokenType.LEFT_PAREN, "(", "(", -1),
+            [],
+        )
+
+        increment = expr.Call(
+            expr.Get(
+                expr.Variable(Token(TokenType.IDENTIFIER, "it", "it", -1)),
+                Token(TokenType.IDENTIFIER, "move", "hasItems", -1),
+            ),
+            Token(TokenType.LEFT_PAREN, "(", "(", -1),
+            [],
+        )
+
+        body = stmt.Block([assignment, body, stmt.Expression(increment)])
+
+        return stmt.Block([iterator_declaration, stmt.While(condition, body)])
 
     def _expression_statement(self) -> stmt.Stmt:
         value = self._expression()
