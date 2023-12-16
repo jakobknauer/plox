@@ -3,7 +3,9 @@
 import sys
 
 import plox.scanning
-from plox.token import Token
+import plox.parsing
+from plox.token import Token, TokenType
+from plox.util import AstPrinter
 
 
 had_error = False
@@ -43,15 +45,29 @@ def run_prompt():
 
 
 def run(source: str):
-    scanner = plox.scanning.Scanner(source)
-    tokens: list[Token] = scanner.scan_tokens()
+    global had_error
 
-    for token in tokens:
-        print(token)
+    scanner = plox.scanning.Scanner(source)
+    tokens = scanner.scan_tokens()
+
+    parser = plox.parsing.Parser(tokens)
+    expression = parser.parse()
+
+    if had_error:
+        return
+
+    print(AstPrinter().print(expression))
 
 
 def error(line: int, message: str):
     report(line, "", message)
+
+
+def error2(token: Token, message: str):
+    if token.type == TokenType.EOF:
+        report(token.line, " at end", message)
+    else:
+        report(token.line, f" at '{token.lexeme}'", message)
 
 
 def report(line: int, where: str, message: str):

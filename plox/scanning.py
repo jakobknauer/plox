@@ -1,4 +1,4 @@
-import plox.plox
+import plox.run
 from plox.token import Token, TokenType
 
 
