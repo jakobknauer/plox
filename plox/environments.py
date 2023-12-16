@@ -39,6 +39,17 @@ class Environment:
             name, f"Undefined variable '{name.lexeme}'."
         )
 
+    def get_by_name(self, name: str) -> object:
+        if name in self._values:
+            return self._values[name]
+
+        if self._enclosing:
+            return self._enclosing.get_by_name(name)
+
+        raise plox.interpreting.PloxRuntimeError(
+            None, f"Undefined variable '{name}'."
+        )
+
     def get_at(self, distance: int, name: str) -> object:
         return self._ancestor(distance)._values.get(name)
 

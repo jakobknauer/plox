@@ -69,6 +69,36 @@ class LoxFunction(LoxCallable):
         return LoxFunction(self._declaration, environment, self._is_initializer)
 
 
+class AnonymousLoxFunction(LoxCallable):
+    def __init__(
+        self,
+        callable_: Callable[..., object],
+        params: list[str],
+        closure: Environment,
+    ):
+        self._callable = callable_
+        self._params = params
+        self._closure = closure
+
+    def arity(self) -> int:
+        return len(self._params)
+
+    def call(self, interpreter: "Interpreter", arguments: list[object]) -> object:
+        return self._callable(interpreter, self._closure, *arguments)
+
+    def __str__(self) -> str:
+        return "<anonymous fn>"
+
+    def bind(self, instance: "LoxInstance") -> Self:
+        environment = Environment(self._closure)
+        environment.define("this", instance)
+        return AnonymousLoxFunction(self._callable, self._params, environment)
+
+
+class AnonymousClass(LoxCallable):
+    ...
+
+
 class LoxClass(LoxCallable):
     def __init__(
         self, name: str, superclass: Self | None, methods: dict[str, LoxFunction]
@@ -139,7 +169,9 @@ class Return(RuntimeError):
 
 
 class Interpreter:
-    def __init__(self, globals_: Environment, error_callback: Callable[[PloxRuntimeError], None]):
+    def __init__(
+        self, globals_: Environment, error_callback: Callable[[PloxRuntimeError], None]
+    ):
         self._error_callback = error_callback
 
         self.globals = globals_

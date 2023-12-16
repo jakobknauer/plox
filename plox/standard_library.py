@@ -2,7 +2,13 @@ import math
 import time
 
 from plox.environments import Environment
-from plox.interpreting import AnonymousCallable, Interpreter
+from plox.interpreting import (
+    AnonymousCallable,
+    Interpreter,
+    LoxClass,
+    AnonymousLoxFunction,
+    LoxInstance,
+)
 
 
 def _to_str(interpreter: Interpreter, arguments: list[object]) -> object:
@@ -75,3 +81,55 @@ STANDARD_LIBRARY = Environment()
 
 for identifier, callable_, arity in _functions:
     STANDARD_LIBRARY.define(identifier, AnonymousCallable(callable_, arity))
+
+
+def _lox_list_init(interpreter: Interpreter, environment: Environment):
+    instance = environment.get_by_name("this")
+    assert isinstance(instance, LoxInstance)
+    instance._items = []
+
+
+_lox_list_init_func = AnonymousLoxFunction(
+    callable_=_lox_list_init,
+    params=[],
+    closure=Environment(),
+)
+
+
+def _lox_list_append(interpreter: Interpreter, environment: Environment, item: object):
+    instance = environment.get_by_name("this")
+    assert isinstance(instance, LoxInstance)
+    instance._items.append(item)
+
+
+_lox_list_append_func = AnonymousLoxFunction(
+    callable_=_lox_list_append,
+    params=["item"],
+    closure=Environment(),
+)
+
+
+def _lox_list_at(interpreter: Interpreter, environment: Environment, index: object):
+    instance = environment.get_by_name("this")
+    assert isinstance(instance, LoxInstance)
+    assert isinstance(index, float)
+    return instance._items[int(index)]
+
+
+_lox_list_at_func = AnonymousLoxFunction(
+    callable_=_lox_list_at,
+    params=["index"],
+    closure=Environment(),
+)
+
+_lox_list = LoxClass(
+    name="list",
+    superclass=None,
+    methods={
+        "init": _lox_list_init_func,
+        "append": _lox_list_append_func,
+        "at": _lox_list_at_func,
+    },
+)
+
+STANDARD_LIBRARY.define("list", _lox_list)
