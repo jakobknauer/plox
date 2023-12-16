@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from plox.expression import Expr
+from plox.token import Token
 
 
 @dataclass
@@ -16,3 +17,9 @@ class Expression(Stmt):
 @dataclass
 class Print(Stmt):
     expression: Expr
+
+
+@dataclass
+class Var(Stmt):
+    name: Token
+    initializer: Expr | None

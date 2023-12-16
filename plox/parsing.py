@@ -1,7 +1,7 @@
 from typing import Callable
 
 from plox.token import Token, TokenType
-from plox.expression import Expr, Binary, Unary, Literal, Grouping
+from plox.expression import Expr, Binary, Unary, Literal, Grouping, Variable, Assign
 from plox import statement as stmt
 
 
@@ -16,8 +16,30 @@ class Parser:
     def parse(self) -> list[stmt.Stmt]:
         statements = []
         while not self._is_at_end():
-            statements.append(self._statement())
+            statements.append(self._declaration())
         return statements
+
+    def _declaration(self) -> stmt.Stmt | None:
+        try:
+            if self._match(TokenType.VAR):
+                return self._var_declaration()
+            return self._statement()
+        except ParseError:
+            self._synchronize()
+            return None
+
+    def _synchronize(self):
+        print("SYNC")
+
+    def _var_declaration(self) -> stmt.Stmt:
+        name = self._consume(TokenType.IDENTIFIER, "Expect variable name.")
+
+        initializer = None
+        if self._match(TokenType.EQUAL):
+            initializer = self._expression()
+
+        self._consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
+        return stmt.Var(name, initializer)
 
     def _statement(self) -> stmt.Stmt:
         if self._match(TokenType.PRINT):
@@ -35,7 +57,23 @@ class Parser:
         return stmt.Expression(value)
 
     def _expression(self) -> Expr:
-        return self._equality()
+        return self._assignment()
+
+    def _assignment(self) -> Expr:
+        expression = self._equality()
+
+        if self._match(TokenType.EQUAL):
+            equals = self._previous()
+            value = self._assignment()
+
+            if isinstance(expression, Variable):
+                name = expression.name
+                return Assign(name, value)
+
+            self._error(equals, "Invalid assignment target.")
+
+        return expression
+
 
     def _equality(self) -> Expr:
         expr = self._comparison()
@@ -105,6 +143,9 @@ class Parser:
             expr = self._expression()
             self._consume(TokenType.RIGHT_PAREN, "Expect ')' after expression")
             return Grouping(expr)
+
+        if self._match(TokenType.IDENTIFIER):
+            return Variable(self._previous())
 
         raise self._error(self._peek(), "Expect expression.")
 

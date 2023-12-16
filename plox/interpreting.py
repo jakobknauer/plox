@@ -3,10 +3,11 @@
 
 from typing import Callable
 
-from plox.expression import Binary, Unary, Grouping, Literal
+from plox.expression import Binary, Unary, Grouping, Literal, Variable, Assign
 from plox import statement as stmt
 from plox.token import Token, TokenType
 from plox.visitor import visitor
+from plox.environment import Environment
 
 
 class InterpreterError(RuntimeError):
@@ -19,6 +20,7 @@ class InterpreterError(RuntimeError):
 class Interpreter:
     def __init__(self, error_callback: Callable[[InterpreterError], None]):
         self._error_callback = error_callback
+        self._environment = Environment()
 
     def interpret(self, statements: list[stmt.Stmt]) -> None:
         try:
@@ -35,6 +37,13 @@ class Interpreter:
     def execute(self, statement: stmt.Print) -> None:
         value = self.evaluate(statement.expression)
         print(self._stringify(value))
+
+    @visitor(stmt.Var)
+    def execute(self, statement: stmt.Var) -> None:
+        value = None
+        if statement.initializer is not None:
+            value = self.evaluate(statement.initializer)
+        self._environment.define(statement.name.lexeme, value)
 
     @visitor(Literal)
     def evaluate(self, literal: Literal) -> object:
@@ -108,6 +117,16 @@ class Interpreter:
 
             case _:
                 return None
+
+    @visitor(Variable)
+    def evaluate(self, variable: Variable) -> object:
+        return self._environment.get(variable.name)
+
+    @visitor(Assign)
+    def evaluate(self, assign: Assign) -> object:
+        value = self.evaluate(assign.value)
+        self._environment.assign(assign.name, value)
+        return value
 
     def _is_truthy(self, object_: object) -> bool:
         match object_:
