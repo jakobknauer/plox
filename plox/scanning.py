@@ -1,4 +1,5 @@
-import plox.run
+from typing import Callable
+
 from plox.token import Token, TokenType
 
 
@@ -23,10 +24,11 @@ KEYWORDS = {
 
 
 class Scanner:
-    def __init__(self, source: str):
+    def __init__(self, source: str, error_callback: Callable[[int, str], None]):
         self._source = source
-        self._tokens: list[Token] = []
+        self._error_callback = error_callback
 
+        self._tokens: list[Token] = []
         self._start = 0
         self._current = 0
         self._line = 1
@@ -97,7 +99,7 @@ class Scanner:
             case _ if c.isalpha():
                 self._identifier()
             case _:
-                plox.plox.error(self._line, "Unexpected character.")
+                self._error_callback(self._line, "Unexpected character.")
 
     def _advance(self) -> str:
         character = self._source[self._current]

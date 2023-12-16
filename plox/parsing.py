@@ -1,11 +1,13 @@
-import plox.run
+from typing import Callable
+
 from plox.token import Token, TokenType
 from plox.expression import Expr, Binary, Unary, Literal, Grouping
 
 
 class Parser:
-    def __init__(self, tokens: list[Token]):
+    def __init__(self, tokens: list[Token], error_callback: Callable[[Token, str], None]):
         self._tokens = tokens
+        self._error_callback = error_callback
         self._current = 0
 
     def parse(self) -> Expr | None:
@@ -103,7 +105,7 @@ class Parser:
         raise self._error(self._peek(), message)
 
     def _error(self, token: Token, message: str) -> Exception:
-        plox.run.error2(token, message)
+        self._error_callback(token, message)
         return ParseError()
 
     def _check(self, type_: TokenType) -> bool:

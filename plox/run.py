@@ -2,8 +2,8 @@
 
 import sys
 
-import plox.scanning
-import plox.parsing
+from plox.scanning import Scanner
+from plox.parsing import Parser
 from plox.token import Token, TokenType
 from plox.util import AstPrinter
 
@@ -47,10 +47,10 @@ def run_prompt():
 def run(source: str):
     global had_error
 
-    scanner = plox.scanning.Scanner(source)
+    scanner = Scanner(source, error)
     tokens = scanner.scan_tokens()
 
-    parser = plox.parsing.Parser(tokens)
+    parser = Parser(tokens, error2)
     expression = parser.parse()
 
     if had_error:
