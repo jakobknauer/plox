@@ -1,13 +1,10 @@
-# pylint: disable=function-redefined
-# mypy: disable-error-code="no-redef"
-
 from abc import ABC, abstractmethod
+import functools
 import time
 from typing import Callable, Self
 
 from plox import expressions as expr, statements as stmt
 from plox.tokens import Token, TokenType
-from plox.visitor import visitor
 
 from plox.environments import Environment
 
@@ -164,53 +161,57 @@ class Interpreter:
         except InterpreterError as e:
             self._error_callback(e)
 
-    @visitor(stmt.Expression)
-    def execute(self, statement: stmt.Expression) -> None:
+    @functools.singledispatchmethod
+    def execute(self, statement: stmt.Stmt) -> None:
+        raise NotImplementedError()
+
+    @execute.register
+    def _(self, statement: stmt.Expression) -> None:
         self.evaluate(statement.expression)
 
-    @visitor(stmt.Print)
-    def execute(self, statement: stmt.Print) -> None:
+    @execute.register
+    def _(self, statement: stmt.Print) -> None:
         value = self.evaluate(statement.expression)
         print(self._stringify(value))
 
-    @visitor(stmt.Var)
-    def execute(self, statement: stmt.Var) -> None:
+    @execute.register
+    def _(self, statement: stmt.Var) -> None:
         value = None
         if statement.initializer is not None:
             value = self.evaluate(statement.initializer)
         self._environment.define(statement.name.lexeme, value)
 
-    @visitor(stmt.Block)
-    def execute(self, statement: stmt.Block) -> None:
+    @execute.register
+    def _(self, statement: stmt.Block) -> None:
         self.execute_block(statement.statements, Environment(self._environment))
 
-    @visitor(stmt.While)
-    def execute(self, statement: stmt.While) -> None:
+    @execute.register
+    def _(self, statement: stmt.While) -> None:
         while self._is_truthy(self.evaluate(statement.condition)):
             self.execute(statement.body)
 
-    @visitor(stmt.Function)
-    def execute(self, statement: stmt.Function) -> None:
+    @execute.register
+    def _(self, statement: stmt.Function) -> None:
         function = LoxFunction(statement, self._environment, False)
         self._environment.define(statement.name.lexeme, function)
 
-    @visitor(stmt.Return)
-    def execute(self, statement: stmt.Return) -> None:
+    @execute.register
+    def _(self, statement: stmt.Return) -> None:
         value = None
         if statement.value is not None:
             value = self.evaluate(statement.value)
 
         raise Return(value)
 
-    @visitor(stmt.If)
-    def execute(self, statement: stmt.If) -> None:
+    @execute.register
+    def _(self, statement: stmt.If) -> None:
         if self._is_truthy(self.evaluate(statement.condition)):
             self.execute(statement.then_branch)
         elif statement.else_branch is not None:
             self.execute(statement.else_branch)
 
-    @visitor(stmt.Class)
-    def execute(self, statement: stmt.Class) -> None:
+    @execute.register
+    def _(self, statement: stmt.Class) -> None:
         superclass = None
         if statement.superclass:
             superclass = self.evaluate(statement.superclass)
@@ -253,16 +254,20 @@ class Interpreter:
     def resolve(self, expression: expr.Expr, depth: int) -> None:
         self._locals[expression] = depth
 
-    @visitor(expr.Literal)
-    def evaluate(self, literal: expr.Literal) -> object:
+    @functools.singledispatchmethod
+    def evaluate(self, literal: expr.Expr) -> object:
+        raise NotImplementedError()
+
+    @evaluate.register
+    def _(self, literal: expr.Literal) -> object:
         return literal.value
 
-    @visitor(expr.Grouping)
-    def evaluate(self, grouping: expr.Grouping) -> object:
+    @evaluate.register
+    def _(self, grouping: expr.Grouping) -> object:
         return self.evaluate(grouping.expression)
 
-    @visitor(expr.Unary)
-    def evaluate(self, unary: expr.Unary) -> object:
+    @evaluate.register
+    def _(self, unary: expr.Unary) -> object:
         right = self.evaluate(unary.right)
 
         match unary.operator.type:
@@ -274,8 +279,8 @@ class Interpreter:
             case _:
                 return None
 
-    @visitor(expr.Binary)
-    def evaluate(self, binary: expr.Binary) -> object:
+    @evaluate.register
+    def _(self, binary: expr.Binary) -> object:
         left = self.evaluate(binary.left)
         right = self.evaluate(binary.right)
 
@@ -326,12 +331,12 @@ class Interpreter:
             case _:
                 return None
 
-    @visitor(expr.Variable)
-    def evaluate(self, variable: expr.Variable) -> object:
+    @evaluate.register
+    def _(self, variable: expr.Variable) -> object:
         return self._look_up_variable(variable.name, variable)
 
-    @visitor(expr.Assign)
-    def evaluate(self, assign: expr.Assign) -> object:
+    @evaluate.register
+    def _(self, assign: expr.Assign) -> object:
         value = self.evaluate(assign.value)
 
         distance = self._locals.get(assign)
@@ -342,8 +347,8 @@ class Interpreter:
 
         return value
 
-    @visitor(expr.Logical)
-    def evaluate(self, logical: expr.Logical) -> object:
+    @evaluate.register
+    def _(self, logical: expr.Logical) -> object:
         left = self.evaluate(logical.left)
 
         if logical.operator.type == TokenType.OR:
@@ -355,8 +360,8 @@ class Interpreter:
 
         return self.evaluate(logical.right)
 
-    @visitor(expr.Call)
-    def evaluate(self, call: expr.Call) -> object:
+    @evaluate.register
+    def _(self, call: expr.Call) -> object:
         callee = self.evaluate(call.callee)
 
         arguments = []
@@ -375,16 +380,16 @@ class Interpreter:
             )
         return function.call(self, arguments)
 
-    @visitor(expr.Get)
-    def evaluate(self, get: expr.Get) -> object:
+    @evaluate.register
+    def _(self, get: expr.Get) -> object:
         object_ = self.evaluate(get.object_)
         if isinstance(object_, LoxInstance):
             return object_.get(get.name)
 
         raise InterpreterError(get.name, "Only instances have properties.")
 
-    @visitor(expr.Set)
-    def evaluate(self, set_: expr.Set) -> object:
+    @evaluate.register
+    def _(self, set_: expr.Set) -> object:
         object_ = self.evaluate(set_.object_)
 
         if not isinstance(object_, LoxInstance):
@@ -394,12 +399,12 @@ class Interpreter:
         object_.set(set_.name, value)
         return value
 
-    @visitor(expr.This)
-    def evaluate(self, this: expr.This) -> object:
+    @evaluate.register
+    def _(self, this: expr.This) -> object:
         return self._look_up_variable(this.keyword, this)
 
-    @visitor(expr.Super)
-    def evaluate(self, super_: expr.Super) -> object:
+    @evaluate.register
+    def _(self, super_: expr.Super) -> object:
         distance = self._locals[super_]
         superclass = self._environment.get_at(distance, "super")
         object_ = self._environment.get_at(distance - 1, "this")
@@ -407,7 +412,9 @@ class Interpreter:
         method = superclass.find_method(super_.method.lexeme)
 
         if method is None:
-            raise InterpreterError(super_.method, f"Undefined property '{super_.method.lexeme}'.")
+            raise InterpreterError(
+                super_.method, f"Undefined property '{super_.method.lexeme}'."
+            )
 
         return method.bind(object_)
 

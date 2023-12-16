@@ -1,11 +1,8 @@
-# pylint: disable=function-redefined
-# mypy: disable-error-code="no-redef"
-
-from typing import Callable
 from enum import Enum, auto
+import functools
+from typing import Callable
 
 from plox.interpreting import Interpreter
-from plox.visitor import visitor
 import plox.statements as stmt
 import plox.expressions as expr
 from plox.tokens import Token
@@ -34,26 +31,30 @@ class Resolver:
         self._current_function = _FunctionType.NONE
         self._current_class = _ClassType.NONE
 
-    @visitor(list)
-    def resolve(self, statements: list[stmt.Stmt]) -> None:
+    @functools.singledispatchmethod
+    def resolve(self, statement: stmt.Stmt) -> None:
+        raise NotImplementedError()
+
+    @resolve.register
+    def _(self, statements: list) -> None:
         for statement in statements:
             self.resolve(statement)
 
-    @visitor(stmt.Block)
-    def resolve(self, statement: stmt.Block) -> None:
+    @resolve.register
+    def _(self, statement: stmt.Block) -> None:
         self._begin_scope()
         self.resolve(statement.statements)
         self._end_scope()
 
-    @visitor(stmt.Var)
-    def resolve(self, statement: stmt.Var) -> None:
+    @resolve.register
+    def _(self, statement: stmt.Var) -> None:
         self._declare(statement.name)
         if statement.initializer is not None:
             self.resolve(statement.initializer)
         self._define(statement.name)
 
-    @visitor(expr.Variable)
-    def resolve(self, expression: expr.Variable) -> None:
+    @resolve.register
+    def _(self, expression: expr.Variable) -> None:
         if self._scopes and self._scopes[-1].get(expression.name.lexeme) is False:
             self._error_callback(
                 expression.name, "Can't read local variable in its own initializer."
@@ -61,35 +62,35 @@ class Resolver:
 
         self._resolve_local(expression, expression.name)
 
-    @visitor(expr.Assign)
-    def resolve(self, expression: expr.Assign) -> None:
+    @resolve.register
+    def _(self, expression: expr.Assign) -> None:
         self.resolve(expression.value)
         self._resolve_local(expression, expression.name)
 
-    @visitor(stmt.Function)
-    def resolve(self, statement: stmt.Function) -> None:
+    @resolve.register
+    def _(self, statement: stmt.Function) -> None:
         self._declare(statement.name)
         self._define(statement.name)
 
         self._resolve_function(statement, _FunctionType.FUNCTION)
 
-    @visitor(stmt.Expression)
-    def resolve(self, statement: stmt.Expression) -> None:
+    @resolve.register
+    def _(self, statement: stmt.Expression) -> None:
         self.resolve(statement.expression)
 
-    @visitor(stmt.If)
-    def resolve(self, statement: stmt.If) -> None:
+    @resolve.register
+    def _(self, statement: stmt.If) -> None:
         self.resolve(statement.condition)
         self.resolve(statement.then_branch)
         if statement.else_branch:
             self.resolve(statement.else_branch)
 
-    @visitor(stmt.Print)
-    def resolve(self, statement: stmt.Print) -> None:
+    @resolve.register
+    def _(self, statement: stmt.Print) -> None:
         self.resolve(statement.expression)
 
-    @visitor(stmt.Return)
-    def resolve(self, statement: stmt.Return) -> None:
+    @resolve.register
+    def _(self, statement: stmt.Return) -> None:
         if self._current_function == _FunctionType.NONE:
             self._error_callback(statement.keyword, "Can't return from top-level code.")
 
@@ -100,13 +101,13 @@ class Resolver:
                 )
             self.resolve(statement.value)
 
-    @visitor(stmt.While)
-    def resolve(self, statement: stmt.While) -> None:
+    @resolve.register
+    def _(self, statement: stmt.While) -> None:
         self.resolve(statement.condition)
         self.resolve(statement.body)
 
-    @visitor(stmt.Class)
-    def resolve(self, statement: stmt.Class) -> None:
+    @resolve.register
+    def _(self, statement: stmt.Class) -> None:
         enclosing_class, self._current_class = self._current_class, _ClassType.CLASS
 
         self._declare(statement.name)
@@ -142,46 +143,46 @@ class Resolver:
 
         self._current_class = enclosing_class
 
-    @visitor(expr.Binary)
-    def resolve(self, expression: expr.Binary) -> None:
+    @resolve.register
+    def _(self, expression: expr.Binary) -> None:
         self.resolve(expression.left)
         self.resolve(expression.right)
 
-    @visitor(expr.Call)
-    def resolve(self, expression: expr.Call) -> None:
+    @resolve.register
+    def _(self, expression: expr.Call) -> None:
         self.resolve(expression.callee)
 
         for argument in expression.arguments:
             self.resolve(argument)
 
-    @visitor(expr.Grouping)
-    def resolve(self, expression: expr.Grouping) -> None:
+    @resolve.register
+    def _(self, expression: expr.Grouping) -> None:
         self.resolve(expression.expression)
 
-    @visitor(expr.Literal)
-    def resolve(self, expression: expr.Literal) -> None:
+    @resolve.register
+    def _(self, expression: expr.Literal) -> None:
         pass
 
-    @visitor(expr.Logical)
-    def resolve(self, expression: expr.Logical) -> None:
+    @resolve.register
+    def _(self, expression: expr.Logical) -> None:
         self.resolve(expression.left)
         self.resolve(expression.right)
 
-    @visitor(expr.Unary)
-    def resolve(self, expression: expr.Unary) -> None:
+    @resolve.register
+    def _(self, expression: expr.Unary) -> None:
         self.resolve(expression.right)
 
-    @visitor(expr.Get)
-    def resolve(self, expression: expr.Get) -> None:
+    @resolve.register
+    def _(self, expression: expr.Get) -> None:
         self.resolve(expression.object_)
 
-    @visitor(expr.Set)
-    def resolve(self, expression: expr.Set) -> None:
+    @resolve.register
+    def _(self, expression: expr.Set) -> None:
         self.resolve(expression.value)
         self.resolve(expression.object_)
 
-    @visitor(expr.This)
-    def resolve(self, expression: expr.This) -> None:
+    @resolve.register
+    def _(self, expression: expr.This) -> None:
         if self._current_class == _ClassType.NONE:
             self._error_callback(
                 expression.keyword, "Can't use 'this' outside of a class."
@@ -190,8 +191,8 @@ class Resolver:
 
         self._resolve_local(expression, expression.keyword)
 
-    @visitor(expr.Super)
-    def resolve(self, expression: expr.Super) -> None:
+    @resolve.register
+    def _(self, expression: expr.Super) -> None:
         if self._current_class == _ClassType.NONE:
             self._error_callback(
                 expression.keyword, "Can't use 'super' outside of a class."
