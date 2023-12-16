@@ -115,6 +115,15 @@ def _lox_list_at(_: Interpreter, environment: Environment, index: object):
     return items[int(index)]
 
 
+@lox_function
+def _lox_list_size(_: Interpreter, environment: Environment):
+    instance = environment.get_by_name("this")
+    assert isinstance(instance, LoxInstance)
+    items = instance.metafields["items"]
+    assert isinstance(items, list)
+    return len(items)
+
+
 _lox_list = LoxClass(
     name="list",
     superclass=None,
@@ -122,7 +131,63 @@ _lox_list = LoxClass(
         "init": _lox_list_init,
         "append": _lox_list_append,
         "at": _lox_list_at,
+        "size": _lox_list_size,
     },
 )
-
 STANDARD_LIBRARY.define("list", _lox_list)
+
+
+@lox_function
+def _lox_list_iterator_init(_: Interpreter, environment: Environment, list_: object):
+    instance = environment.get_by_name("this")
+    assert isinstance(instance, LoxInstance)
+    instance._fields["list"] = list_
+    instance._fields["index"] = 0.0
+
+
+@lox_function
+def _lox_list_iterator_get(_: Interpreter, environment: Environment):
+    instance = environment.get_by_name("this")
+    assert isinstance(instance, LoxInstance)
+    list_ = instance._fields["list"]
+    assert isinstance(list_, LoxInstance)
+    items = list_.metafields["items"]
+    assert isinstance(items, list)
+    index = instance._fields["index"]
+    assert isinstance(index, float)
+    return items[int(index)]
+
+
+@lox_function
+def _lox_list_iterator_move(_: Interpreter, environment: Environment):
+    instance = environment.get_by_name("this")
+    assert isinstance(instance, LoxInstance)
+    index = instance._fields["index"]
+    assert isinstance(index, float)
+    instance._fields["index"] = index + 1
+
+
+@lox_function
+def _lox_list_iterator_has_items(_: Interpreter, environment: Environment):
+    instance = environment.get_by_name("this")
+    assert isinstance(instance, LoxInstance)
+    list_ = instance._fields["list"]
+    assert isinstance(list_, LoxInstance)
+    items = list_.metafields["items"]
+    assert isinstance(items, list)
+    index = instance._fields["index"]
+    assert isinstance(index, float)
+    return index < len(items)
+
+
+_lox_list_iterator = LoxClass(
+    name="iterator",
+    superclass=None,
+    methods={
+        "init": _lox_list_iterator_init,
+        "get": _lox_list_iterator_get,
+        "move": _lox_list_iterator_move,
+        "hasItems": _lox_list_iterator_has_items,
+    },
+)
+STANDARD_LIBRARY.define("listIterator", _lox_list_iterator)
