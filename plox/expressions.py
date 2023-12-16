@@ -40,3 +40,10 @@ class Variable(Expr):
 class Assign(Expr):
     name: Token
     value: Expr
+
+
+@dataclass
+class Logical(Expr):
+    left: Expr
+    operator: Token
+    right: Expr

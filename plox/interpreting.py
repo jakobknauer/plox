@@ -149,6 +149,19 @@ class Interpreter:
         self._environment.assign(assign.name, value)
         return value
 
+    @visitor(expr.Logical)
+    def evaluate(self, logical: expr.Logical) -> object:
+        left = self.evaluate(logical.left)
+
+        if logical.operator.type == TokenType.OR:
+            if self._is_truthy(left):
+                return left
+        else:
+            if not self._is_truthy(left):
+                return left
+
+        return self.evaluate(logical.right)
+
     def _is_truthy(self, object_: object) -> bool:
         match object_:
             case None:
@@ -156,7 +169,7 @@ class Interpreter:
             case bool():
                 return object_
             case _:
-                return False
+                return True
 
     def _check_number_operand(self, operator: Token, operand: object) -> None:
         if isinstance(operand, float):
