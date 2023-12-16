@@ -66,7 +66,7 @@ def _log(_: Interpreter, arguments: list[object]) -> object:
 
 
 _functions = [
-    ("clock", lambda interpreter, arguments: (time.time() / 1000.0), 0),
+    ("clock", lambda interpreter, arguments: time.time(), 0),
     ("input", lambda interpreter, arguments: input(), 0),
     ("str", _to_str, 1),
     ("float", _to_float, 1),
