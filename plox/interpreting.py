@@ -18,6 +18,10 @@ class LoxCallable(ABC):
     def arity(self) -> int:
         pass
 
+    @abstractmethod
+    def bind(self, instance: "LoxInstance") -> Self:
+        pass
+
 
 class AnonymousCallable(LoxCallable):
     def __init__(
@@ -31,6 +35,9 @@ class AnonymousCallable(LoxCallable):
 
     def call(self, interpreter: "Interpreter", arguments: list[object]) -> object:
         return self._callable(interpreter, arguments)
+
+    def bind(self, instance: "LoxInstance") -> Self:
+        pass
 
 
 class LoxFunction(LoxCallable):
@@ -101,7 +108,7 @@ class AnonymousClass(LoxCallable):
 
 class LoxClass(LoxCallable):
     def __init__(
-        self, name: str, superclass: Self | None, methods: dict[str, LoxFunction]
+        self, name: str, superclass: Self | None, methods: dict[str, LoxCallable]
     ):
         self._name = name
         self._superclass = superclass
@@ -124,7 +131,7 @@ class LoxClass(LoxCallable):
             return 0
         return initializer.arity()
 
-    def find_method(self, name: str) -> LoxFunction | None:
+    def find_method(self, name: str) -> LoxCallable | None:
         if name in self._methods:
             return self._methods[name]
 
@@ -133,11 +140,15 @@ class LoxClass(LoxCallable):
 
         return None
 
+    def bind(self, instance: "LoxInstance") -> Self:
+        raise NotImplementedError()
+
 
 class LoxInstance:
     def __init__(self, class_: LoxClass):
         self._class = class_
         self._fields: dict[str, object] = {}
+        self.metafields: dict[str, object] = {}
 
     def __str__(self) -> str:
         return f"{self._class._name} instance"

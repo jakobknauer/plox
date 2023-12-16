@@ -12,55 +12,55 @@ from plox.interpreting import (
 )
 
 
-def _to_str(interpreter: Interpreter, arguments: list[object]) -> object:
+def _to_str(_: Interpreter, arguments: list[object]) -> object:
     if not isinstance(arguments[0], (str, float)):
-        raise Exception(
+        raise ValueError(
             "Built-in function 'str' expects arguments of type string or float."
         )
     return str(arguments[0])
 
 
-def _to_float(interpreter: Interpreter, arguments: list[object]) -> object:
+def _to_float(_: Interpreter, arguments: list[object]) -> object:
     if not isinstance(arguments[0], (str, float)):
-        raise Exception(
+        raise ValueError(
             "Built-in function 'float' expects arguments of type string or float."
         )
     return float(arguments[0])
 
 
-def _floor(interpreter: Interpreter, arguments: list[object]) -> object:
+def _floor(_: Interpreter, arguments: list[object]) -> object:
     if not isinstance(arguments[0], float):
-        raise Exception("Built-in function 'floor' expects arguments of type float.")
+        raise ValueError("Built-in function 'floor' expects arguments of type float.")
     return float(math.floor(arguments[0]))
 
 
-def _ceil(interpreter: Interpreter, arguments: list[object]) -> object:
+def _ceil(_: Interpreter, arguments: list[object]) -> object:
     if not isinstance(arguments[0], float):
-        raise Exception("Built-in function 'ceil' expects arguments of type float.")
+        raise ValueError("Built-in function 'ceil' expects arguments of type float.")
     return float(math.ceil(arguments[0]))
 
 
-def _sin(interpreter: Interpreter, arguments: list[object]) -> object:
+def _sin(_: Interpreter, arguments: list[object]) -> object:
     if not isinstance(arguments[0], float):
-        raise Exception("Built-in function 'sin' expects arguments of type float.")
+        raise ValueError("Built-in function 'sin' expects arguments of type float.")
     return math.sin(arguments[0])
 
 
-def _cos(interpreter: Interpreter, arguments: list[object]) -> object:
+def _cos(_: Interpreter, arguments: list[object]) -> object:
     if not isinstance(arguments[0], float):
-        raise Exception("Built-in function 'cos' expects arguments of type float.")
+        raise ValueError("Built-in function 'cos' expects arguments of type float.")
     return math.cos(arguments[0])
 
 
-def _exp(interpreter: Interpreter, arguments: list[object]) -> object:
+def _exp(_: Interpreter, arguments: list[object]) -> object:
     if not isinstance(arguments[0], float):
-        raise Exception("Built-in function 'exp' expects arguments of type float.")
+        raise ValueError("Built-in function 'exp' expects arguments of type float.")
     return math.exp(arguments[0])
 
 
-def _log(interpreter: Interpreter, arguments: list[object]) -> object:
+def _log(_: Interpreter, arguments: list[object]) -> object:
     if not isinstance(arguments[0], float):
-        raise Exception("Built-in function 'log' expects arguments of type float.")
+        raise ValueError("Built-in function 'log' expects arguments of type float.")
     return math.log(arguments[0])
 
 
@@ -84,31 +84,35 @@ for identifier, callable_, arity in _functions:
     STANDARD_LIBRARY.define(identifier, AnonymousCallable(callable_, arity))
 
 
-def lox_function(function):
+def lox_function(function) -> AnonymousLoxFunction:
     parameters = inspect.getfullargspec(function).args
     return AnonymousLoxFunction(function, parameters[2:], Environment())
 
 
 @lox_function
-def _lox_list_init(interpreter: Interpreter, environment: Environment):
+def _lox_list_init(_: Interpreter, environment: Environment):
     instance = environment.get_by_name("this")
     assert isinstance(instance, LoxInstance)
-    instance._items = []
+    instance.metafields["items"] = []
 
 
 @lox_function
-def _lox_list_append(interpreter: Interpreter, environment: Environment, item: object):
+def _lox_list_append(_: Interpreter, environment: Environment, item: object):
     instance = environment.get_by_name("this")
     assert isinstance(instance, LoxInstance)
-    instance._items.append(item)
+    items = instance.metafields["items"]
+    assert isinstance(items, list)
+    items.append(item)
 
 
 @lox_function
-def _lox_list_at(interpreter: Interpreter, environment: Environment, index: object):
+def _lox_list_at(_: Interpreter, environment: Environment, index: object):
     instance = environment.get_by_name("this")
     assert isinstance(instance, LoxInstance)
     assert isinstance(index, float)
-    return instance._items[int(index)]
+    items = instance.metafields["items"]
+    assert isinstance(items, list)
+    return items[int(index)]
 
 
 _lox_list = LoxClass(
