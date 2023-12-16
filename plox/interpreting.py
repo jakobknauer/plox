@@ -69,12 +69,15 @@ class LoxFunction(LoxCallable):
     def bind(self, instance: "LoxInstance") -> Self:
         environment = Environment(self._closure)
         environment.define("this", instance)
-        return LoxFunction(self._declaration, self._environment, self._is_initializer)
+        return LoxFunction(self._declaration, environment, self._is_initializer)
 
 
 class LoxClass(LoxCallable):
-    def __init__(self, name: str, methods: dict[str, LoxFunction]):
+    def __init__(
+        self, name: str, superclass: Self | None, methods: dict[str, LoxFunction]
+    ):
         self._name = name
+        self._superclass = superclass
         self._methods = methods
 
     def __str__(self) -> str:
@@ -95,7 +98,13 @@ class LoxClass(LoxCallable):
         return initializer.arity()
 
     def find_method(self, name: str) -> LoxFunction | None:
-        return self._methods.get(name)
+        if name in self._methods:
+            return self._methods[name]
+
+        if self._superclass:
+            return self._superclass.find_method(name)
+
+        return None
 
 
 class LoxInstance:
@@ -202,7 +211,19 @@ class Interpreter:
 
     @visitor(stmt.Class)
     def execute(self, statement: stmt.Class) -> None:
+        superclass = None
+        if statement.superclass:
+            superclass = self.evaluate(statement.superclass)
+            if not isinstance(superclass, LoxClass):
+                raise InterpreterError(
+                    statement.superclass.name, "Superclass must be a class."
+                )
+
         self._environment.define(statement.name.lexeme, None)
+
+        if statement.superclass:
+            self._environment = Environment(self._environment)
+            self._environment.define("super", superclass)
 
         methods = {}
         for method in statement.methods:
@@ -211,7 +232,11 @@ class Interpreter:
             )
             methods[method.name.lexeme] = function
 
-        class_ = LoxClass(statement.name.lexeme, methods)
+        class_ = LoxClass(statement.name.lexeme, superclass, methods)
+
+        if statement.superclass:
+            self._environment = self._environment._enclosing
+
         self._environment.assign(statement.name, class_)
 
     def execute_block(
@@ -372,6 +397,19 @@ class Interpreter:
     @visitor(expr.This)
     def evaluate(self, this: expr.This) -> object:
         return self._look_up_variable(this.keyword, this)
+
+    @visitor(expr.Super)
+    def evaluate(self, super_: expr.Super) -> object:
+        distance = self._locals[super_]
+        superclass = self._environment.get_at(distance, "super")
+        object_ = self._environment.get_at(distance - 1, "this")
+
+        method = superclass.find_method(super_.method.lexeme)
+
+        if method is None:
+            raise InterpreterError(super_.method, f"Undefined property '{super_.method.lexeme}'.")
+
+        return method.bind(object_)
 
     def _is_truthy(self, object_: object) -> bool:
         match object_:

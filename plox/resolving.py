@@ -21,6 +21,7 @@ class _FunctionType(Enum):
 class _ClassType(Enum):
     NONE = auto()
     CLASS = auto()
+    SUBCLASS = auto()
 
 
 class Resolver:
@@ -111,6 +112,18 @@ class Resolver:
         self._declare(statement.name)
         self._define(statement.name)
 
+        if statement.superclass:
+            if statement.name.lexeme == statement.superclass.name.lexeme:
+                self._error_callback("A class can't inherit from itself.")
+
+        if statement.superclass:
+            self._current_class = _ClassType.SUBCLASS
+            self.resolve(statement.superclass)
+
+        if statement.superclass:
+            self._begin_scope()
+            self._scopes[-1]["super"] = True
+
         self._begin_scope()
         self._scopes[-1]["this"] = True
 
@@ -123,6 +136,9 @@ class Resolver:
             self._resolve_function(method, declaration)
 
         self._end_scope()
+
+        if statement.superclass:
+            self._end_scope()
 
         self._current_class = enclosing_class
 
@@ -171,6 +187,19 @@ class Resolver:
                 expression.keyword, "Can't use 'this' outside of a class."
             )
             return
+
+        self._resolve_local(expression, expression.keyword)
+
+    @visitor(expr.Super)
+    def resolve(self, expression: expr.Super) -> None:
+        if self._current_class == _ClassType.NONE:
+            self._error_callback(
+                expression.keyword, "Can't use 'super' outside of a class."
+            )
+        elif self._current_class != _ClassType.SUBCLASS:
+            self._error_callback(
+                expression.keyword, "Can't use 'super' in a class with no superclass."
+            )
 
         self._resolve_local(expression, expression.keyword)
 

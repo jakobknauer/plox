@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from plox.expressions import Expr
+from plox import expressions as expr
 from plox.tokens import Token
 
 
@@ -59,4 +60,5 @@ class Return(Stmt):
 @dataclass
 class Class(Stmt):
     name: Token
+    superclass: expr.Variable | None
     methods: list[Function]

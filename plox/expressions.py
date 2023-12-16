@@ -72,3 +72,9 @@ class Set(Expr):
 @dataclass(eq=False)
 class This(Expr):
     keyword: Token
+
+
+@dataclass(eq=False)
+class Super(Expr):
+    keyword: Token
+    method: Token

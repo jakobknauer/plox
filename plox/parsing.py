@@ -33,6 +33,12 @@ class Parser:
 
     def _class_declaration(self) -> stmt.Stmt:
         name = self._consume(TokenType.IDENTIFIER, "Expect class name.")
+
+        superclass = None
+        if self._match(TokenType.LESS):
+            self._consume(TokenType.IDENTIFIER, "Expect superclass name.")
+            superclass = expr.Variable(self._previous())
+
         self._consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
 
         methods = []
@@ -41,7 +47,7 @@ class Parser:
 
         self._consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
 
-        return stmt.Class(name, methods)
+        return stmt.Class(name, superclass, methods)
 
     def _synchronize(self) -> None:
         print("SYNC")
@@ -307,6 +313,12 @@ class Parser:
 
         if self._match(TokenType.NUMBER, TokenType.STRING):
             return expr.Literal(self._previous().literal)
+
+        if self._match(TokenType.SUPER):
+            keyword = self._previous()
+            self._consume(TokenType.DOT, "Expect '.' after 'super'.")
+            method = self._consume(TokenType.IDENTIFIER, "Expect superclass method name.")
+            return expr.Super(keyword, method)
 
         if self._match(TokenType.LEFT_PAREN):
             expression = self._expression()
