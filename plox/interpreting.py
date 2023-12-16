@@ -59,6 +59,13 @@ class Interpreter:
         finally:
             self._environment = previous
 
+    @visitor(stmt.If)
+    def execute(self, statement: stmt.If) -> None:
+        if self._is_truthy(self.evaluate(statement.condition)):
+            self.execute(statement.then_branch)
+        elif statement.else_branch is not None:
+            self.execute(statement.else_branch)
+
     @visitor(expr.Literal)
     def evaluate(self, literal: expr.Literal) -> object:
         return literal.value
