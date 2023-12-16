@@ -1,6 +1,6 @@
 from typing import Callable
 
-from plox.token import Token, TokenType
+from plox.tokens import Token, TokenType
 
 
 KEYWORDS = {

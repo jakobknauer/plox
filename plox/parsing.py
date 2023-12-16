@@ -1,8 +1,7 @@
 from typing import Callable
 
-from plox.token import Token, TokenType
-from plox.expression import Expr, Binary, Unary, Literal, Grouping, Variable, Assign
-from plox import statement as stmt
+from plox.tokens import Token, TokenType
+from plox import expressions as expr, statements as stmt
 
 
 class Parser:
@@ -56,37 +55,37 @@ class Parser:
         self._consume(TokenType.SEMICOLON, "Expect ';' after expression.")
         return stmt.Expression(value)
 
-    def _expression(self) -> Expr:
+    def _expression(self) -> expr.Expr:
         return self._assignment()
 
-    def _assignment(self) -> Expr:
+    def _assignment(self) -> expr.Expr:
         expression = self._equality()
 
         if self._match(TokenType.EQUAL):
             equals = self._previous()
             value = self._assignment()
 
-            if isinstance(expression, Variable):
+            if isinstance(expression, expr.Variable):
                 name = expression.name
-                return Assign(name, value)
+                return expr.Assign(name, value)
 
             self._error(equals, "Invalid assignment target.")
 
         return expression
 
 
-    def _equality(self) -> Expr:
-        expr = self._comparison()
+    def _equality(self) -> expr.Expr:
+        expression = self._comparison()
 
         while self._match(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL):
             operator = self._previous()
             right = self._comparison()
-            expr = Binary(expr, operator, right)
+            expression = expr.Binary(expression, operator, right)
 
-        return expr
+        return expression
 
-    def _comparison(self) -> Expr:
-        expr = self._term()
+    def _comparison(self) -> expr.Expr:
+        expression = self._term()
 
         while self._match(
             TokenType.GREATER,
@@ -96,56 +95,56 @@ class Parser:
         ):
             operator = self._previous()
             right = self._term()
-            expr = Binary(expr, operator, right)
+            expression = expr.Binary(expression, operator, right)
 
-        return expr
+        return expression
 
-    def _term(self) -> Expr:
-        expr = self._factor()
+    def _term(self) -> expr.Expr:
+        expression = self._factor()
 
         while self._match(TokenType.MINUS, TokenType.PLUS):
             operator = self._previous()
             right = self._factor()
-            expr = Binary(expr, operator, right)
+            expression = expr.Binary(expression, operator, right)
 
-        return expr
+        return expression
 
-    def _factor(self) -> Expr:
-        expr = self._unary()
+    def _factor(self) -> expr.Expr:
+        expression = self._unary()
 
         while self._match(TokenType.SLASH, TokenType.STAR):
             operator = self._previous()
             right = self._unary()
-            expr = Binary(expr, operator, right)
+            expression = expr.Binary(expression, operator, right)
 
-        return expr
+        return expression
 
-    def _unary(self) -> Expr:
+    def _unary(self) -> expr.Expr:
         if self._match(TokenType.BANG, TokenType.MINUS):
             operator = self._previous()
             right = self._unary()
-            return Unary(operator, right)
+            return expr.Unary(operator, right)
 
         return self._primary()
 
-    def _primary(self) -> Expr:
+    def _primary(self) -> expr.Expr:
         if self._match(TokenType.FALSE):
-            return Literal(False)
+            return expr.Literal(False)
         if self._match(TokenType.TRUE):
-            return Literal(True)
+            return expr.Literal(True)
         if self._match(TokenType.NIL):
-            return Literal(None)
+            return expr.Literal(None)
 
         if self._match(TokenType.NUMBER, TokenType.STRING):
-            return Literal(self._previous().literal)
+            return expr.Literal(self._previous().literal)
 
         if self._match(TokenType.LEFT_PAREN):
-            expr = self._expression()
+            expression = self._expression()
             self._consume(TokenType.RIGHT_PAREN, "Expect ')' after expression")
-            return Grouping(expr)
+            return expr.Grouping(expression)
 
         if self._match(TokenType.IDENTIFIER):
-            return Variable(self._previous())
+            return expr.Variable(self._previous())
 
         raise self._error(self._peek(), "Expect expression.")
 

@@ -3,11 +3,10 @@
 
 from typing import Callable
 
-from plox.expression import Binary, Unary, Grouping, Literal, Variable, Assign
-from plox import statement as stmt
-from plox.token import Token, TokenType
+from plox import expressions as expr, statements as stmt
+from plox.tokens import Token, TokenType
 from plox.visitor import visitor
-from plox.environment import Environment
+from plox.environments import Environment
 
 
 class InterpreterError(RuntimeError):
@@ -45,16 +44,16 @@ class Interpreter:
             value = self.evaluate(statement.initializer)
         self._environment.define(statement.name.lexeme, value)
 
-    @visitor(Literal)
-    def evaluate(self, literal: Literal) -> object:
+    @visitor(expr.Literal)
+    def evaluate(self, literal: expr.Literal) -> object:
         return literal.value
 
-    @visitor(Grouping)
-    def evaluate(self, grouping: Grouping) -> object:
+    @visitor(expr.Grouping)
+    def evaluate(self, grouping: expr.Grouping) -> object:
         return self.evaluate(grouping.expression)
 
-    @visitor(Unary)
-    def evaluate(self, unary: Unary) -> object:
+    @visitor(expr.Unary)
+    def evaluate(self, unary: expr.Unary) -> object:
         right = self.evaluate(unary.right)
 
         match unary.operator.type:
@@ -66,8 +65,8 @@ class Interpreter:
             case _:
                 return None
 
-    @visitor(Binary)
-    def evaluate(self, binary: Binary) -> object:
+    @visitor(expr.Binary)
+    def evaluate(self, binary: expr.Binary) -> object:
         left = self.evaluate(binary.left)
         right = self.evaluate(binary.right)
 
@@ -118,12 +117,12 @@ class Interpreter:
             case _:
                 return None
 
-    @visitor(Variable)
-    def evaluate(self, variable: Variable) -> object:
+    @visitor(expr.Variable)
+    def evaluate(self, variable: expr.Variable) -> object:
         return self._environment.get(variable.name)
 
-    @visitor(Assign)
-    def evaluate(self, assign: Assign) -> object:
+    @visitor(expr.Assign)
+    def evaluate(self, assign: expr.Assign) -> object:
         value = self.evaluate(assign.value)
         self._environment.assign(assign.name, value)
         return value

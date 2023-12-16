@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from plox.token import Token
+from plox.tokens import Token
 
 
 @dataclass

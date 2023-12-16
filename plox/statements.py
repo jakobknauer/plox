@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from plox.expression import Expr
-from plox.token import Token
+from plox.expressions import Expr
+from plox.tokens import Token
 
 
 @dataclass

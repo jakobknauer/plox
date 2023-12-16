@@ -1,5 +1,5 @@
 import plox.interpreting
-from plox.token import Token
+from plox.tokens import Token
 
 
 class Environment:

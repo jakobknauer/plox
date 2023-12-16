@@ -5,7 +5,7 @@ import sys
 from plox.scanning import Scanner
 from plox.parsing import Parser
 from plox.interpreting import Interpreter, InterpreterError
-from plox.token import Token, TokenType
+from plox.tokens import Token, TokenType
 
 
 had_error = False
