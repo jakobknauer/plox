@@ -132,7 +132,7 @@ class Scanner:
             self._advance()
 
         if self._is_at_end():
-            plox.plox.error(self._line, "Unterminated string.")
+            self._error_callback(self._line, "Unterminated string.")
             return
 
         self._advance()
