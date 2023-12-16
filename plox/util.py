@@ -5,7 +5,6 @@ from plox import expression
 from plox.visitor import visitor
 
 
-
 class AstPrinter:
     @visitor(expression.Binary)
     def print(self, binary: expression.Binary) -> str:

@@ -4,11 +4,12 @@ import sys
 
 from plox.scanning import Scanner
 from plox.parsing import Parser
+from plox.interpreting import Interpreter, InterpreterError
 from plox.token import Token, TokenType
-from plox.util import AstPrinter
 
 
 had_error = False
+had_interpreter_error = False
 
 
 def main():
@@ -29,6 +30,8 @@ def run_file(path: str):
 
     if had_error:
         sys.exit(65)
+    if had_interpreter_error:
+        sys.exit(70)
 
 
 def run_prompt():
@@ -45,8 +48,6 @@ def run_prompt():
 
 
 def run(source: str):
-    global had_error
-
     scanner = Scanner(source, error)
     tokens = scanner.scan_tokens()
 
@@ -56,7 +57,8 @@ def run(source: str):
     if had_error:
         return
 
-    print(AstPrinter().print(expression))
+    assert expression is not None
+    Interpreter(interpreter_error).interpret(expression)
 
 
 def error(line: int, message: str):
@@ -70,9 +72,14 @@ def error2(token: Token, message: str):
         report(token.line, f" at '{token.lexeme}'", message)
 
 
+def interpreter_error(ie: InterpreterError):
+    global had_interpreter_error
+    print(f"{ie.message}\n[line {ie.token.line}]")
+    had_interpreter_error = True
+
+
 def report(line: int, where: str, message: str):
     global had_error
-
     print(f"[line {line}] Error{where}: {message}")
     had_error = True
 
