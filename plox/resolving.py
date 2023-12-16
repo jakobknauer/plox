@@ -115,7 +115,9 @@ class Resolver:
 
         if statement.superclass:
             if statement.name.lexeme == statement.superclass.name.lexeme:
-                self._error_callback("A class can't inherit from itself.")
+                self._error_callback(
+                    statement.superclass.name, "A class can't inherit from itself."
+                )
 
         if statement.superclass:
             self._current_class = _ClassType.SUBCLASS
