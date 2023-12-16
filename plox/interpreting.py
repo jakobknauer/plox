@@ -463,7 +463,6 @@ class Interpreter:
         instance.metafields["items"] = items
         return instance
 
-
     def _is_truthy(self, object_: object) -> bool:
         match object_:
             case None:
