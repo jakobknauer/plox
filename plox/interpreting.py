@@ -85,6 +85,7 @@ class Interpreter:
         )
 
         self._environment = self.globals
+        self._locals: dict[expr.Expr, int] = {}
 
     def interpret(self, statements: list[stmt.Stmt]) -> None:
         try:
@@ -148,6 +149,9 @@ class Interpreter:
             self.execute(statement.then_branch)
         elif statement.else_branch is not None:
             self.execute(statement.else_branch)
+
+    def resolve(self, expression: expr.Expr, depth: int) -> None:
+        self._locals[expression] = depth
 
     @visitor(expr.Literal)
     def evaluate(self, literal: expr.Literal) -> object:
@@ -224,12 +228,18 @@ class Interpreter:
 
     @visitor(expr.Variable)
     def evaluate(self, variable: expr.Variable) -> object:
-        return self._environment.get(variable.name)
+        return self._look_up_variable(variable.name, variable)
 
     @visitor(expr.Assign)
     def evaluate(self, assign: expr.Assign) -> object:
         value = self.evaluate(assign.value)
-        self._environment.assign(assign.name, value)
+
+        distance = self._locals.get(assign)
+        if distance is not None:
+            self._environment.assign_at(distance, assign.name, value)
+        else:
+            self.globals.assign(assign.name, value)
+
         return value
 
     @visitor(expr.Logical)
@@ -297,3 +307,10 @@ class Interpreter:
                 return text
             case _:
                 return str(object_)
+
+    def _look_up_variable(self, name: Token, expression: expr.Expr) -> object:
+        distance = self._locals.get(expression)
+        if distance is not None:
+            return self._environment.get_at(distance, name.lexeme)
+        else:
+            return self.globals.get(name)

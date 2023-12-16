@@ -25,6 +25,9 @@ class Environment:
             name, f"Undefined variable '{name.lexeme}'."
         )
 
+    def assign_at(self, distance: int, name: Token, value: object) -> None:
+        self._ancestor(distance)._values[name.lexeme] = value
+
     def get(self, name: Token) -> object:
         if name.lexeme in self._values:
             return self._values[name.lexeme]
@@ -35,3 +38,12 @@ class Environment:
         raise plox.interpreting.InterpreterError(
             name, f"Undefined variable '{name.lexeme}'."
         )
+
+    def get_at(self, distance: int, name: str) -> object:
+        return self._ancestor(distance)._values.get(name)
+
+    def _ancestor(self, distance: int) -> Self:
+        environment = self
+        for _ in range(distance):
+            environment = environment._enclosing
+        return environment

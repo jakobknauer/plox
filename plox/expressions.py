@@ -3,53 +3,53 @@ from dataclasses import dataclass
 from plox.tokens import Token
 
 
-@dataclass
+@dataclass(eq=False)
 class Expr:
     pass
 
 
-@dataclass
+@dataclass(eq=False)
 class Binary(Expr):
     left: Expr
     operator: Token
     right: Expr
 
 
-@dataclass
+@dataclass(eq=False)
 class Grouping(Expr):
     expression: Expr
 
 
-@dataclass
+@dataclass(eq=False)
 class Literal(Expr):
     value: object
 
 
-@dataclass
+@dataclass(eq=False)
 class Unary(Expr):
     operator: Token
     right: Expr
 
 
-@dataclass
+@dataclass(eq=False)
 class Variable(Expr):
     name: Token
 
 
-@dataclass
+@dataclass(eq=False)
 class Assign(Expr):
     name: Token
     value: Expr
 
 
-@dataclass
+@dataclass(eq=False)
 class Logical(Expr):
     left: Expr
     operator: Token
     right: Expr
 
 
-@dataclass
+@dataclass(eq=False)
 class Call(Expr):
     callee: Expr
     paren: Token
