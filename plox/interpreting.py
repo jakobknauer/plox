@@ -287,13 +287,13 @@ class Interpreter:
         match binary.operator.type:
             # Arithmetic
             case TokenType.MINUS:
-                self._check_number_operands(binary, left, right)
+                self._check_number_operands(binary.operator, left, right)
                 return left - right
             case TokenType.SLASH:
-                self._check_number_operands(binary, left, right)
+                self._check_number_operands(binary.operator, left, right)
                 return left / right
             case TokenType.STAR:
-                self._check_number_operands(binary, left, right)
+                self._check_number_operands(binary.operator, left, right)
                 return left * right
             case TokenType.PLUS if isinstance(left, float) and isinstance(right, float):
                 return left + right
@@ -310,16 +310,16 @@ class Interpreter:
 
             # Comparison
             case TokenType.GREATER:
-                self._check_number_operands(binary, left, right)
+                self._check_number_operands(binary.operator, left, right)
                 return left > right
             case TokenType.GREATER_EQUAL:
-                self._check_number_operands(binary, left, right)
+                self._check_number_operands(binary.operator, left, right)
                 return left >= right
             case TokenType.LESS:
-                self._check_number_operands(binary, left, right)
+                self._check_number_operands(binary.operator, left, right)
                 return left < right
             case TokenType.LESS_EQUAL:
-                self._check_number_operands(binary, left, right)
+                self._check_number_operands(binary.operator, left, right)
                 return left <= right
 
             # Equality
