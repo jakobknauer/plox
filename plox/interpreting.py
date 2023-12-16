@@ -37,14 +37,15 @@ class AnonymousCallable(LoxCallable):
 
 
 class LoxFunction(LoxCallable):
-    def __init__(self, declaration: stmt.Function):
+    def __init__(self, declaration: stmt.Function, closure: Environment):
         self._declaration = declaration
+        self._closure = closure
 
     def arity(self) -> int:
         return len(self._declaration.params)
 
     def call(self, interpreter: "Interpreter", arguments: list[object]) -> object:
-        environment = Environment(interpreter.globals)
+        environment = Environment(self._closure)
         for parameter, argument in zip(self._declaration.params, arguments):
             environment.define(parameter.lexeme, argument)
 
@@ -119,7 +120,7 @@ class Interpreter:
 
     @visitor(stmt.Function)
     def execute(self, statement: stmt.Function) -> None:
-        function = LoxFunction(statement)
+        function = LoxFunction(statement, self._environment)
         self._environment.define(statement.name.lexeme, function)
 
     @visitor(stmt.Return)
