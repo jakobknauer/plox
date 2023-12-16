@@ -2,7 +2,7 @@
 
 import sys
 
-from plox.interpreting import Interpreter, InterpreterError
+from plox.interpreting import Interpreter, PloxRuntimeError
 from plox.parsing import Parser
 from plox.resolving import Resolver
 from plox.scanning import Scanner
@@ -22,7 +22,7 @@ def main():
 class Application:
     def __init__(self):
         self._had_error = False
-        self._had_interpreter_error = False
+        self._had_runtime_error = False
         self._interpreter = Interpreter(error_callback=self._interpreter_error)
 
     def run_file(self, path: str):
@@ -33,7 +33,7 @@ class Application:
 
         if self._had_error:
             sys.exit(65)
-        if self._had_interpreter_error:
+        if self._had_runtime_error:
             sys.exit(70)
 
     def run_prompt(self):
@@ -73,9 +73,9 @@ class Application:
         else:
             self._report(token.line, f" at '{token.lexeme}'", message)
 
-    def _interpreter_error(self, ie: InterpreterError):
+    def _interpreter_error(self, ie: PloxRuntimeError):
         print(f"{ie.message}\n[line {ie.token.line}]")
-        self._had_interpreter_error = True
+        self._had_runtime_error = True
 
     def _report(self, line: int, where: str, message: str):
         print(f"[line {line}] Error{where}: {message}")

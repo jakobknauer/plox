@@ -120,13 +120,13 @@ class LoxInstance:
         if method:
             return method.bind(self)
 
-        raise InterpreterError(name, f"Undefined property '{name.lexeme}'.")
+        raise PloxRuntimeError(name, f"Undefined property '{name.lexeme}'.")
 
     def set(self, name: Token, value: object) -> None:
         self._fields[name.lexeme] = value
 
 
-class InterpreterError(RuntimeError):
+class PloxRuntimeError(RuntimeError):
     def __init__(self, token: Token, message: str, *args, **kwargs):
         super().__init__(args, kwargs)
         self.token = token
@@ -139,7 +139,7 @@ class Return(RuntimeError):
 
 
 class Interpreter:
-    def __init__(self, error_callback: Callable[[InterpreterError], None]):
+    def __init__(self, error_callback: Callable[[PloxRuntimeError], None]):
         self._error_callback = error_callback
 
         self.globals = Environment()
@@ -158,7 +158,7 @@ class Interpreter:
         try:
             for statement in statements:
                 self.execute(statement)
-        except InterpreterError as e:
+        except PloxRuntimeError as e:
             self._error_callback(e)
 
     @functools.singledispatchmethod
@@ -216,7 +216,7 @@ class Interpreter:
         if statement.superclass:
             superclass = self.evaluate(statement.superclass)
             if not isinstance(superclass, LoxClass):
-                raise InterpreterError(
+                raise PloxRuntimeError(
                     statement.superclass.name, "Superclass must be a class."
                 )
 
@@ -304,7 +304,7 @@ class Interpreter:
 
             # Fallback for plus with incompatible operands
             case TokenType.PLUS:
-                raise InterpreterError(
+                raise PloxRuntimeError(
                     binary.operator, "Operands must be two numbers or two strings."
                 )
 
@@ -369,12 +369,12 @@ class Interpreter:
             arguments.append(self.evaluate(argument))
 
         if not isinstance(callee, LoxCallable):
-            raise InterpreterError(call.paren, "Can only call functions and classes.")
+            raise PloxRuntimeError(call.paren, "Can only call functions and classes.")
 
         function: LoxCallable = callee
 
         if len(arguments) != function.arity():
-            raise InterpreterError(
+            raise PloxRuntimeError(
                 call.paren,
                 "Expected {function.arity()} arguments but got {len(arguments)}.",
             )
@@ -386,14 +386,14 @@ class Interpreter:
         if isinstance(object_, LoxInstance):
             return object_.get(get.name)
 
-        raise InterpreterError(get.name, "Only instances have properties.")
+        raise PloxRuntimeError(get.name, "Only instances have properties.")
 
     @evaluate.register
     def _(self, set_: expr.Set) -> object:
         object_ = self.evaluate(set_.object_)
 
         if not isinstance(object_, LoxInstance):
-            raise InterpreterError(set_.name, "Only instances have fields.")
+            raise PloxRuntimeError(set_.name, "Only instances have fields.")
 
         value = self.evaluate(set_.value)
         object_.set(set_.name, value)
@@ -412,7 +412,7 @@ class Interpreter:
         method = superclass.find_method(super_.method.lexeme)
 
         if method is None:
-            raise InterpreterError(
+            raise PloxRuntimeError(
                 super_.method, f"Undefined property '{super_.method.lexeme}'."
             )
 
@@ -430,14 +430,14 @@ class Interpreter:
     def _check_number_operand(self, operator: Token, operand: object) -> None:
         if isinstance(operand, float):
             return
-        raise InterpreterError(operator, "Operand must be a number")
+        raise PloxRuntimeError(operator, "Operand must be a number")
 
     def _check_number_operands(
         self, operator: Token, left: object, right: object
     ) -> None:
         if isinstance(left, float) and isinstance(right, float):
             return
-        raise InterpreterError(operator, "Operands must be numbers")
+        raise PloxRuntimeError(operator, "Operands must be numbers")
 
     def _stringify(self, object_: object) -> str:
         match object_:

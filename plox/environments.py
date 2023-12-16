@@ -21,7 +21,7 @@ class Environment:
             self._enclosing.assign(name, value)
             return
 
-        raise plox.interpreting.InterpreterError(
+        raise plox.interpreting.PloxRuntimeError(
             name, f"Undefined variable '{name.lexeme}'."
         )
 
@@ -35,7 +35,7 @@ class Environment:
         if self._enclosing:
             return self._enclosing.get(name)
 
-        raise plox.interpreting.InterpreterError(
+        raise plox.interpreting.PloxRuntimeError(
             name, f"Undefined variable '{name.lexeme}'."
         )
 
