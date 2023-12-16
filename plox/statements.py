@@ -23,3 +23,8 @@ class Print(Stmt):
 class Var(Stmt):
     name: Token
     initializer: Expr | None
+
+
+@dataclass
+class Block(Stmt):
+    statements: list[Stmt]

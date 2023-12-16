@@ -44,6 +44,21 @@ class Interpreter:
             value = self.evaluate(statement.initializer)
         self._environment.define(statement.name.lexeme, value)
 
+    @visitor(stmt.Block)
+    def execute(self, statement: stmt.Block) -> None:
+        self._execute_block(statement.statements, Environment(self._environment))
+
+    def _execute_block(
+        self, statements: list[stmt.Stmt], environment: Environment
+    ) -> None:
+        previous = self._environment
+        try:
+            self._environment = environment
+            for statement in statements:
+                self.execute(statement)
+        finally:
+            self._environment = previous
+
     @visitor(expr.Literal)
     def evaluate(self, literal: expr.Literal) -> object:
         return literal.value
