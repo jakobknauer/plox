@@ -139,17 +139,10 @@ class Return(RuntimeError):
 
 
 class Interpreter:
-    def __init__(self, error_callback: Callable[[PloxRuntimeError], None]):
+    def __init__(self, globals_: Environment, error_callback: Callable[[PloxRuntimeError], None]):
         self._error_callback = error_callback
 
-        self.globals = Environment()
-        self.globals.define(
-            "clock",
-            AnonymousCallable(
-                callable_=lambda interpreter, arguments: (time.time() / 1000.0),
-                arity=0,
-            ),
-        )
+        self.globals = globals_
 
         self._environment = self.globals
         self._locals: dict[expr.Expr, int] = {}

@@ -7,6 +7,7 @@ from plox.parsing import Parser
 from plox.resolving import Resolver
 from plox.scanning import Scanner
 from plox.tokens import Token, TokenType
+from plox.standard_library import STANDARD_LIBRARY
 
 
 def main():
@@ -23,7 +24,7 @@ class Application:
     def __init__(self):
         self._had_error = False
         self._had_runtime_error = False
-        self._interpreter = Interpreter(error_callback=self._interpreter_error)
+        self._interpreter = Interpreter(globals_=STANDARD_LIBRARY, error_callback=self._interpreter_error)
 
     def run_file(self, path: str):
         with open(path) as file:
