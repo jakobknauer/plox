@@ -51,3 +51,55 @@ class Range
         return this; 
     }
 }
+
+class LinkedListNode
+{
+    init(value)
+    {
+        this.value = value;
+        this.next = nil;
+    }
+}
+
+class LinkedList
+{
+    init()
+    {
+        this.first = LinkedListNode(-1);
+        this.last = this.first;
+    }
+
+    append(value)
+    {
+        this.last.next = LinkedListNode(value);
+        this.last = this.last.next;
+    }
+
+    iterate()
+    {
+        return LinkedListIterator(this.first.next);
+    }
+}
+
+class LinkedListIterator
+{
+    init(node)
+    {
+        this.node = node;
+    }
+
+    get()
+    {
+        return this.node.value;
+    }
+
+    move()
+    {
+        this.node = this.node.next;
+    }
+
+    hasItems()
+    {
+        return this.node != nil;
+    }
+}
