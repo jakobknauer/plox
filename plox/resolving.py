@@ -206,6 +206,11 @@ class Resolver:
 
         self._resolve_local(expression, expression.keyword)
 
+    @resolve.register
+    def _(self, expression: expr.ListInitializer) -> None:
+        for item in expression.items:
+            self.resolve(item)
+
     def _begin_scope(self) -> None:
         self._scopes.append({})
 

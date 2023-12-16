@@ -317,13 +317,19 @@ class Parser:
         if self._match(TokenType.SUPER):
             keyword = self._previous()
             self._consume(TokenType.DOT, "Expect '.' after 'super'.")
-            method = self._consume(TokenType.IDENTIFIER, "Expect superclass method name.")
+            method = self._consume(
+                TokenType.IDENTIFIER, "Expect superclass method name."
+            )
             return expr.Super(keyword, method)
 
         if self._match(TokenType.LEFT_PAREN):
             expression = self._expression()
             self._consume(TokenType.RIGHT_PAREN, "Expect ')' after expression")
             return expr.Grouping(expression)
+
+        if self._match(TokenType.LEFT_BRACKET):
+            items = self._finish_list_initializer()
+            return expr.ListInitializer(items)
 
         if self._match(TokenType.THIS):
             return expr.This(self._previous())
@@ -332,6 +338,17 @@ class Parser:
             return expr.Variable(self._previous())
 
         raise self._error(self._peek(), "Expect expression.")
+
+    def _finish_list_initializer(self) -> list[expr.Expr]:
+        items = []
+        if not self._check(TokenType.RIGHT_BRACKET):
+            items.append(self._expression())
+            while self._match(TokenType.COMMA):
+                items.append(self._expression())
+
+        self._consume(TokenType.RIGHT_BRACKET, "Expect ']' after list initializer.")
+
+        return items
 
     def _match(self, *types: TokenType) -> bool:
         for type_ in types:

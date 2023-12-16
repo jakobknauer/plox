@@ -78,3 +78,8 @@ class This(Expr):
 class Super(Expr):
     keyword: Token
     method: Token
+
+
+@dataclass(eq=False)
+class ListInitializer(Expr):
+    items: list[Expr]
