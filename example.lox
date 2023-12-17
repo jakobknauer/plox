@@ -1,0 +1,41 @@
+// create a list:
+var list = [1, 2, 3];
+
+
+// iterate over list using foreach loop:
+foreach(x; list)
+{
+    print x*x;
+}
+
+
+// create a linked list:
+var linkedList = LinkedList();
+linkedList.append(4);
+linkedList.append(5);
+linkedList.append(6);
+
+
+// iterate over linked list using foreach loop:
+foreach(x; linkedList)
+{
+    print x*x;
+}
+
+
+// Lazy iteration using Range:
+var sum = 0;
+foreach(i; Range(0, 100, 1))
+{
+    sum = sum + i*i;
+}
+print(sum);
+
+
+// Input and numbers:
+print("Input number:");
+var numberString = input();
+var number = float(numberString);
+var twice = number * 2;
+print("Twice your number: " + str(twice));
+print("Rounded down: " + str(floor(number)));
